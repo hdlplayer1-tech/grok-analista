@@ -273,7 +273,7 @@ function renderWatchlistTable() {
   tbody.innerHTML = watchlist
     .map((ticker) => {
       const stock = quotes[ticker];
-      if (!stock) return `<tr><td class="p-3 text-slate-500" colspan="10">${ticker} · a carregar</td></tr>`;
+      if (!stock) return `<tr><td class="p-3 text-slate-500" colspan="12">${ticker} · a carregar</td></tr>`;
       return `<tr>
         <td class="p-3"><button onclick="toggleWatchlist('${ticker}')" class="text-yellow-400">★</button></td>
         <td class="p-3 font-bold text-white">${stock.ticker}<span class="block text-xs font-normal text-slate-400">${stock.name}</span></td>
@@ -283,6 +283,8 @@ function renderWatchlistTable() {
         <td class="p-3 text-xs ${tone(stock.ret1W)}">${pct(stock.ret1W)}</td>
         <td class="p-3 text-xs ${tone(stock.ret1M)}">${pct(stock.ret1M)}</td>
         <td class="p-3 text-xs ${tone(stock.ret1Y)}">${pct(stock.ret1Y)}</td>
+        <td class="p-3 text-xs ${tone(stock.ret3Y)}">${pct(stock.ret3Y)}</td>
+        <td class="p-3 text-xs ${tone(stock.ret5Y)}">${pct(stock.ret5Y)}</td>
         <td class="p-3 text-xs ${tone(stock.retYTD)}">${pct(stock.retYTD)}</td>
         <td class="p-3">${signalCell(stock)}</td>
       </tr>`;
