@@ -1,0 +1,13 @@
+{
+  "name": "alentejano-analista",
+  "version": "1.1.0",
+  "description": "Screener global com rácio P/E ao vivo, sem chave de API",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node backend/server.js"
+  }
+}
