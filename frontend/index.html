@@ -1,126 +1,4 @@
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alentejano Analista</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
-    .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; }
-    .badge-pass { background-color: #064e3b; color: #34d399; }
-    .badge-fail { background-color: #7f1d1d; color: #f87171; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-  </style>
-</head>
-<body class="min-h-screen p-4 sm:p-6">
-  <div class="max-w-7xl mx-auto space-y-6">
-    
-    <!-- Cabeçalho -->
-    <header class="card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
-      <div>
-        <h1 class="text-2xl font-black text-white tracking-tight flex items-center gap-2">
-          🍷 Alentejano Analista
-        </h1>
-        <p class="text-xs text-slate-400 mt-1">Screener de mercados globais, watchlist e avaliação de portefólio</p>
-      </div>
-
-      <!-- Pesquisa de Ativos -->
-      <div class="relative w-full md:w-80">
-        <input 
-          type="text" 
-          id="searchInput" 
-          oninput="handleSearchInput(event)" 
-          placeholder="Pesquisar ticker, nome ou ISIN..." 
-          class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
-        >
-        <div id="searchResultsDropdown" class="absolute left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl hidden z-50 max-h-60 overflow-y-auto"></div>
-      </div>
-    </header>
-
-    <!-- Erro global / Relógio -->
-    <div class="flex justify-between items-center text-xs px-1">
-      <span id="loadError" class="text-red-400 font-bold hidden"></span>
-      <span id="clock" class="text-slate-500 ml-auto">a carregar...</span>
-    </div>
-
-    <!-- Navegação por Abas -->
-    <nav class="flex gap-2 border-b border-slate-800 pb-3">
-      <button onclick="switchTab('screener')" id="tabBtnScreener" class="px-4 py-2 rounded-lg font-bold text-sm transition bg-blue-600 text-white shadow">Screener</button>
-      <button onclick="switchTab('watchlist')" id="tabBtnWatchlist" class="px-4 py-2 rounded-lg font-bold text-sm transition text-slate-400 hover:text-white">Watchlist (<span id="watchlistCountBadge">0</span>)</button>
-      <button onclick="switchTab('portfolio')" id="tabBtnPortfolio" class="px-4 py-2 rounded-lg font-bold text-sm transition text-slate-400 hover:text-white">Portefólio</button>
-    </nav>
-
-    <!-- Barra de Modelos Global (visível no Screener e Watchlist) -->
-    <div id="globalModelsBar" class="card p-5 space-y-4">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Filtrar por Analista Global</h3>
-        <span id="activeProfileBadgeScreener" class="text-[10px] bg-blue-950 text-blue-300 px-2.5 py-1 rounded border border-blue-800 font-semibold">Analista: HDL</span>
-      </div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-        <button onclick="setGlobalProfile('HDL')" id="btn-HDL" class="p-3 rounded-lg border text-center font-bold transition border-blue-500 bg-blue-900/40 text-blue-400 text-xs">HDL</button>
-        <button onclick="setGlobalProfile('Buffett')" id="btn-Buffett" class="p-3 rounded-lg border text-center font-bold transition border-slate-700 bg-slate-800 text-slate-300 text-xs">Buffett</button>
-        <button onclick="setGlobalProfile('Graham')" id="btn-Graham" class="p-3 rounded-lg border text-center font-bold transition border-slate-700 bg-slate-800 text-slate-300 text-xs">Graham</button>
-        <button onclick="setGlobalProfile('Simons')" id="btn-Simons" class="p-3 rounded-lg border text-center font-bold transition border-slate-700 bg-slate-800 text-slate-300 text-xs">Simons</button>
-        <button onclick="setGlobalProfile('Burry')" id="btn-Burry" class="p-3 rounded-lg border text-center font-bold transition border-slate-700 bg-slate-800 text-slate-300 text-xs">Burry</button>
-        <button onclick="setGlobalProfile('Dalio')" id="btn-Dalio" class="p-3 rounded-lg border text-center font-bold transition border-slate-700 bg-slate-800 text-slate-300 text-xs">Dalio</button>
-      </div>
-    </div>
-
-    <!-- SEPARADOR 1: SCREENER -->
-    <div id="tabScreener" class="tab-content active space-y-6">
-      <div class="card overflow-x-auto shadow-xl">
-        <table class="w-full text-left text-xs border-collapse">
-          <thead>
-            <tr class="border-b border-slate-700 text-slate-400 bg-slate-900/50 uppercase tracking-wider text-[10px]">
-              <th class="p-3 text-center">★</th>
-              <th class="p-3">Ativo</th>
-              <th class="p-3">Mercado</th>
-              <th class="p-3">Setor</th>
-              <th class="p-3">Preço (EUR)</th>
-              <th class="p-3">Orig.</th>
-              <th class="p-3">1D</th>
-              <th class="p-3">P/E</th>
-              <th class="p-3">Gráfico</th>
-              <th class="p-3">Sinal do Analista</th>
-            </tr>
-          </thead>
-          <tbody id="screenerTableBody" class="divide-y divide-slate-800"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- SEPARADOR 2: WATCHLIST -->
-    <div id="tabWatchlist" class="tab-content space-y-6">
-      <div id="watchlistEmptyState" class="card p-12 text-center text-slate-400 space-y-2 hidden">
-        <p class="text-base font-bold text-white">A tua watchlist está vazia.</p>
-        <p class="text-xs">Clica na estrela ★ no Screener ou pesquisa um ativo para adicioná-lo.</p>
-      </div>
-      <div id="watchlistTableWrapper" class="card overflow-x-auto shadow-xl">
-        <table class="w-full text-left text-xs border-collapse">
-          <thead>
-            <tr class="border-b border-slate-700 text-slate-400 bg-slate-900/50 uppercase tracking-wider text-[10px]">
-              <th class="p-3">★</th>
-              <th class="p-3">Ativo</th>
-              <th class="p-3">Preço (EUR)</th>
-              <th class="p-3">P/E</th>
-              <th class="p-3">1D</th>
-              <th class="p-3">1S</th>
-              <th class="p-3">1M</th>
-              <th class="p-3">1A</th>
-              <th class="p-3">3A</th>
-              <th class="p-3">5A</th>
-              <th class="p-3">YTD</th>
-              <th class="p-3">Sinal do Analista</th>
-            </tr>
-          </thead>
-          <tbody id="watchlistTableBody" class="divide-y divide-slate-800"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- SEPARADOR 3: PORTEFÓLIO -->
+<!-- SEPARADOR 3: PORTEFÓLIO -->
     <div id="tabPortfolio" class="tab-content space-y-6">
       
       <!-- Adicionar Posição -->
@@ -139,13 +17,13 @@
             <div id="portfolioSearchDropdown" class="absolute left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl hidden z-50 max-h-60 overflow-y-auto"></div>
           </div>
           <div class="sm:col-span-3">
-            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Valor Total (€)</label>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">N.º de Ações / Unidades</label>
             <input 
               type="number" 
               step="any" 
               min="0" 
-              id="portfolioValueInput" 
-              placeholder="Ex.: 2500" 
+              id="portfolioSharesInput" 
+              placeholder="Ex.: 10 ou 1.5" 
               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
             >
           </div>
@@ -172,7 +50,7 @@
 
         <div id="portfolioEmptyState" class="p-12 text-center text-slate-400 space-y-2">
           <p class="text-base font-bold text-white">O teu portefólio está vazio.</p>
-          <p class="text-xs">Adiciona posições em cima para ver a avaliação dos 6 analistas lendários.</p>
+          <p class="text-xs">Adiciona posições em cima indicando o número de ações para ver a avaliação em tempo real.</p>
         </div>
 
         <div id="portfolioTableWrapper" class="overflow-x-auto hidden">
@@ -181,7 +59,7 @@
               <tr class="border-b border-slate-700 text-slate-400 bg-slate-900/50 uppercase tracking-wider text-[10px]">
                 <th class="p-3">Ativo</th>
                 <th class="p-3">Tipo de Ativo</th>
-                <th class="p-3">Valor (€)</th>
+                <th class="p-3">N.º de Ações</th>
                 <th class="p-3">Peso</th>
                 <th class="p-3">TER (Comissão Anual)</th>
                 <th class="p-3 text-right">Ação</th>
@@ -212,9 +90,3 @@
       </div>
 
     </div>
-
-  </div>
-
-  <script src="app.js"></script>
-</body>
-</html>
