@@ -84,6 +84,7 @@ async function loadChart(symbol, range) {
     currency: typeof meta.currency === "string" ? meta.currency : "USD",
     name: meta.shortName || meta.longName || symbol,
     exchange: meta.fullExchangeName || meta.exchangeName || "Global",
+    quoteType: typeof meta.instrumentType === "string" ? meta.instrumentType : "",
     changePercent: num(meta.regularMarketChangePercent),
     gmtoffset: num(meta.gmtoffset) ?? 0,
     bars,
@@ -107,13 +108,14 @@ async function loadFundamentals(symbol) {
   const start = now - 800 * 24 * 3600;
   const url =
     `https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(symbol)}` +
-    `?symbol=${encodeURIComponent(symbol)}&type=trailingDilutedEPS,trailingPeRatio&period1=${start}&period2=${now}`;
+    `?symbol=${encodeURIComponent(symbol)}&type=trailingDilutedEPS,trailingPeRatio,annualReportExpenseRatio&period1=${start}&period2=${now}`;
   const json = await fetchJson(url);
   const rows = json.timeseries?.result ?? [];
   let eps = null;
   let epsAsOf = null;
   let peReported = null;
   let peAsOf = null;
+  let ter = null;
   for (const row of rows) {
     const type = row.meta?.type?.[0];
     if (type === "trailingDilutedEPS") {
@@ -130,8 +132,14 @@ async function loadFundamentals(symbol) {
         peAsOf = point.asOf;
       }
     }
+    if (type === "annualReportExpenseRatio") {
+      const point = lastPoint(row.annualReportExpenseRatio);
+      if (point && point.raw > 0) {
+        ter = Math.round(point.raw * 10000) / 100;
+      }
+    }
   }
-  return { eps, epsAsOf, peReported, peAsOf };
+  return { eps, epsAsOf, peReported, peAsOf, ter };
 }
 
 function utcDate(ts) {
@@ -201,6 +209,7 @@ function sectorOf(symbol, name) {
   if (/(AMZN|TSLA|NKE|WHR)/.test(s)) return "Consumo Cíclico";
   if (/(JPM|BAC|BNP|HDB|HSBA)/.test(s)) return "Serviços Financeiros";
   if (/(PFE|AZN|LLY|NOVO)/.test(s)) return "Saúde";
+  if (/(ETF|UCITS|ISHARES|VANGUARD|AMUNDI|XTRACKERS|SPDR)/.test(s)) return "ETF / Fundo";
   return "Geral";
 }
 
@@ -230,6 +239,7 @@ async function getQuote(symbol) {
       epsAsOf: null,
       peReported: null,
       peAsOf: null,
+      ter: null,
     })),
   ]);
   const closeOnReport = fund.peAsOf ? closeOnOrBefore(chart.bars, fund.peAsOf) : null;
@@ -248,6 +258,7 @@ async function getQuote(symbol) {
     ticker: symbol,
     name: chart.name,
     market: chart.exchange,
+    quoteType: chart.quoteType,
     sector,
     origCurrency: chart.currency,
     origPrice: round2(chart.price) ?? chart.price,
@@ -268,6 +279,7 @@ async function getQuote(symbol) {
     eps: fund.eps != null ? Math.round(fund.eps * 1000) / 1000 : null,
     epsAsOf: fund.epsAsOf,
     peAsOf: fund.peAsOf,
+    ter: fund.ter ?? null,
     isTech: sector === "Tecnologia",
     spark,
     updatedAt: Date.now(),
