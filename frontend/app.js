@@ -50,19 +50,19 @@ function evaluateSignal(stock, prof) {
   const limit = stock.isTech ? 25 : 15;
   if (prof === "HDL") {
     const pass = y != null && y <= -30 && peOk(pe, limit);
-    return { pass, text: pass ? "APROVADO HDL" : "REPROVADO HDL", detail: `1 ano ${fmtRet(y)} · P/E ${money(pe)} (<${limit})` };
+    return { pass, text: pass ? "APROVADO HDL" : "REPROVADO HDL", detail: `1 ano ${fmtRet(y)} · P/E ${money(pe)} (< ${limit})` };
   }
   if (prof === "Buffett") {
     const pass = peOk(pe, 20) && y != null && y > -20;
-    return { pass, text: pass ? "APROVADO BUFFETT" : "REPROVADO BUFFETT", detail: `P/E ${money(pe)} (< 20) · 1 ano${fmtRet(y)}` };
+    return { pass, text: pass ? "APROVADO BUFFETT" : "REPROVADO BUFFETT", detail: `P/E ${money(pe)} (< 20) · 1 ano ${fmtRet(y)}` };
   }
   if (prof === "Graham") {
     const pass = peOk(pe, 15) && y != null && y < 0;
-    return { pass, text: pass ? "APROVADO GRAHAM" : "REPROVADO GRAHAM", detail: `P/E ${money(pe)} (< 15) · 1 ano${fmtRet(y)}` };
+    return { pass, text: pass ? "APROVADO GRAHAM" : "REPROVADO GRAHAM", detail: `P/E ${money(pe)} (< 15) · 1 ano ${fmtRet(y)}` };
   }
   if (prof === "Simons") {
     const pass = (stock.ret1D != null && stock.ret1D > 0) || (stock.ret1M != null && stock.ret1M > 0);
-    return { pass, text: pass ? "COMPRA QUANT" : "NEUTRO QUANT", detail: `1D ${fmtRet(stock.ret1D)} · 1M${fmtRet(stock.ret1M)}` };
+    return { pass, text: pass ? "COMPRA QUANT" : "NEUTRO QUANT", detail: `1D ${fmtRet(stock.ret1D)} · 1M ${fmtRet(stock.ret1M)}` };
   }
   if (prof === "Burry") {
     const pass = y != null && y <= -25 && peOk(pe, 18);
@@ -80,7 +80,7 @@ function peHtml(stock) {
   let title = "Último P/E publicado";
   if (stock.peLive && stock.peMethod === "eps" && stock.eps != null) {
     note = "ao vivo";
-    title = `P/E = ${stock.origPrice}${stock.origCurrency} ÷ EPS ${stock.eps} (12 meses${stock.epsAsOf ? ", " + stock.epsAsOf : ""})`;
+    title = `P/E = ${stock.origPrice} ${stock.origCurrency} ÷ EPS ${stock.eps} (12 meses${stock.epsAsOf ? ", " + stock.epsAsOf : ""})`;
   } else if (stock.peLive) {
     note = "ao vivo";
     title = `P/E publicado${stock.peAsOf ? " em " + stock.peAsOf : ""} ajustado ao preço atual`;
@@ -262,7 +262,7 @@ function renderScreenerTable() {
         <td class="p-3 text-xs">${stock.market}</td>
         <td class="p-3 text-xs text-blue-300">${stock.sector}</td>
         <td class="p-3 font-semibold text-emerald-400">€${money(stock.price)}</td>
-        <td class="p-3 text-xs text-slate-400">${money(stock.origPrice)}${stock.origCurrency}</td>
+        <td class="p-3 text-xs text-slate-400">${money(stock.origPrice)} ${stock.origCurrency}</td>
         <td class="p-3 font-bold ${tone(stock.ret1D)}">${pct(stock.ret1D)}</td>
         <td class="p-3">${peHtml(stock)}</td>
         <td class="p-3">${spark(stock.spark)}</td>
@@ -278,11 +278,13 @@ function renderWatchlistTable() {
   const wrap = document.getElementById("watchlistTableWrapper");
   document.getElementById("watchlistCountBadge").textContent = watchlist.length;
   if (!watchlist.length) {
+    empty.classList.add("block");
     empty.classList.remove("hidden");
     wrap.classList.add("hidden");
     tbody.innerHTML = "";
     return;
   }
+  empty.classList.remove("block");
   empty.classList.add("hidden");
   wrap.classList.remove("hidden");
   tbody.innerHTML = watchlist
@@ -323,7 +325,7 @@ function selectFooter(p) {
 }
 
 /* ============================================================================
-   SEPARADOR PORTEFÓLIO — NÚMERO DE AÇÕES, VALOR DE MERCADO E ANALISTAS
+   SEPARADOR PORTEFÓLIO
    ============================================================================ */
 
 const ASSET_TYPES = [
@@ -416,7 +418,7 @@ function savePortfolio() {
 
 function classifyAsset(item) {
   const qType = (item.type || item.quoteType || "").toUpperCase();
-  const text = `${item.symbol \vert{}\vert{} ""} ${item.name || ""}`.toUpperCase();
+  const text = `${item.symbol || ""} ${item.name || ""}`.toUpperCase();
   if (qType === "CRYPTOCURRENCY" || /(BTC|ETH|SOL|CRYPTO|BITCOIN|ETHEREUM)/.test(text)) return "crypto";
   if (qType === "ETF" || qType === "MUTUALFUND" || /(ETF|UCITS|ISHARES|VANGUARD|AMUNDI|XTRACKERS|SPDR|INVESCO|LYXOR|WISDOMTREE)/.test(text)) {
     if (/(BOND|AGGREGATE|TREASURY|GILT|OBRIG|GOVT|CORP BOND|HIGH YIELD|SHORT DURATION)/.test(text)) return "etf_bond";
@@ -506,211 +508,3 @@ async function addPortfolioPosition() {
       }
     } catch {}
   }
-
-  if (!candidate) {
-    feedback.textContent = "Não foi encontrado nenhum ativo com essa pesquisa.";
-    feedback.className = "text-sm text-red-400";
-    return;
-  }
-
-  let quoteData = null;
-  try {
-    const qRes = await fetch("/api/quote?symbol=" + encodeURIComponent(candidate.symbol));
-    if (qRes.ok) {
-      quoteData = await qRes.json();
-      quotes[candidate.symbol.toUpperCase()] = quoteData;
-    }
-  } catch {}
-
-  const finalName = (quoteData && quoteData.name) || candidate.name || candidate.symbol;
-  const detectedType = classifyAsset({
-    symbol: candidate.symbol,
-    name: finalName,
-    type: (quoteData && quoteData.quoteType) || candidate.type,
-  });
-  const detectedTer = quoteData && typeof quoteData.ter === "number" ? quoteData.ter : null;
-
-  const existingIndex = portfolio.findIndex((p) => p.ticker.toUpperCase() === candidate.symbol.toUpperCase());
-  if (existingIndex >= 0) {
-    portfolio[existingIndex].shares = portfolio[existingIndex].shares + sharesVal;
-  } else {
-    portfolio.push({
-      id: Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-      ticker: candidate.symbol.toUpperCase(),
-      name: finalName,
-      type: detectedType,
-      shares: sharesVal,
-      ter: detectedTer,
-    });
-  }
-
-  savePortfolio();
-  pendingPortfolioAsset = null;
-  searchInput.value = "";
-  sharesInput.value = "";
-  document.getElementById("portfolioSearchDropdown").classList.add("hidden");
-
-  feedback.textContent = `Adicionado/Atualizado: ${finalName}.`; feedback.className = "text-sm text-slate-300";  // Pede a cotação se ainda não existir if (!quotes[candidate.symbol.toUpperCase()]) { refresh([candidate.symbol.toUpperCase()]); } else { renderPortfolio(); } }  function updatePositionType(index, newType) { if (!portfolio[index]) return; portfolio[index].type = newType; const typeMeta = ASSET_TYPES.find((t) => t.id === newType); if (!typeMeta \vert{}\vert{} !typeMeta.isEtf) { portfolio[index].ter = null; } savePortfolio(); renderPortfolio(); }  function updatePositionShares(index, rawVal) { if (!portfolio[index]) return; const parsed = parseFloat(String(rawVal).replace(",", ".")); portfolio[index].shares = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0; savePortfolio(); renderPortfolio(); }  function updatePositionTer(index, rawTer) { if (!portfolio[index]) return; const cleaned = String(rawTer).trim().replace(",", "."); if (!cleaned \vert{}\vert{} cleaned.toLowerCase() === "n/d") { portfolio[index].ter = null; } else { const parsed = parseFloat(cleaned); portfolio[index].ter = Number.isFinite(parsed) && parsed >= 0 ? parsed : null; } savePortfolio(); renderPortfolio(); }  function removePortfolioPosition(index) { portfolio.splice(index, 1); savePortfolio(); renderPortfolio(); }  function clearPortfolio() { portfolio = []; savePortfolio(); const feedback = document.getElementById("portfolioFeedback"); if (feedback) feedback.classList.add("hidden"); renderPortfolio(); }  function selectPortfolioAnalyst(analystId) { selectedPortfolioAnalyst = analystId; localStorage.setItem("aa_portfolio_analyst_v1", analystId); renderPortfolio(); }  function scoreColorClass(score) { if (score >= 7) return "text-emerald-400"; if (score >= 5) return "text-amber-400"; return "text-red-400"; }  function barColorClass(score) { if (score >= 7) return "bg-emerald-400"; if (score >= 5) return "bg-amber-400"; return "bg-red-400"; }  function scoreLabelPt(score) { if (score >= 9) return "excelente"; if (score >= 7) return "boa"; if (score >= 5) return "razoável"; return "fraca"; }  function computePortfolioMetrics() { let total = 0; const processedPositions = portfolio.map(p => { const q = quotes[p.ticker]; const price = q ? q.price : 0; const value = (p.shares \vert{}\vert{} 0) * price; total += value; return { ...p, price, value }; });  if (total <= 0) return { total: 0, processedPositions, metrics: null };  let broadWeight = 0; let bondWeight = 0; let goldWeight = 0; let specWeight = 0; let etfTotalWeight = 0; let etfKnownTerWeight = 0; let weightedTerSum = 0;  for (const p of processedPositions) { const w = (p.value / total) * 100; const typeMeta = ASSET_TYPES.find((t) => t.id === p.type) \vert{}\vert{} ASSET_TYPES[0];  if (p.type === "etf_broad") broadWeight += w; else if (p.type === "etf_bond" \vert{}\vert{} p.type === "cash") bondWeight += w; else if (p.type === "etf_gold") goldWeight += w; else specWeight += w;  if (typeMeta.isEtf) { etfTotalWeight += w; if (p.ter != null && Number.isFinite(p.ter)) { etfKnownTerWeight += w; weightedTerSum += w * p.ter; } } }  const unknownEtfWeight = Math.max(0, etfTotalWeight - etfKnownTerWeight); const effectiveTer = etfTotalWeight > 0 ? (weightedTerSum + unknownEtfWeight * 0.30) / etfTotalWeight : 0.15;  const majorityMissingTer = etfTotalWeight > 0 && etfKnownTerWeight < etfTotalWeight * 0.5;  let costsScore = 10; if (effectiveTer <= 0.15) costsScore = 10; else if (effectiveTer <= 0.25) costsScore = 8; else if (effectiveTer <= 0.40) costsScore = 6; else if (effectiveTer <= 0.65) costsScore = 4; else costsScore = 2; if (majorityMissingTer && costsScore > 6) costsScore = 6;  const broadScore = Math.min(10, Math.max(0, Math.round((broadWeight / 85) * 10))); const count = portfolio.length; let simplicityScore = count <= 5 ? 10 : count <= 8 ? 8 : count <= 12 ? 6 : 4; let lowSpecScore = specWeight <= 5 ? 10 : specWeight <= 10 ? 8 : specWeight <= 20 ? 5 : specWeight <= 30 ? 2 : 0;  const maxSingleWeight = Math.max(...processedPositions.map((p) => (p.value / total) * 100)); let diversificationScore = Math.round((broadWeight * 0.08) + (bondWeight * 0.04)); if (maxSingleWeight > 75 && count === 1 && broadWeight < 70) diversificationScore = Math.min(diversificationScore, 4); if (broadWeight >= 60 && count >= 2) diversificationScore = Math.max(diversificationScore, 7); diversificationScore = Math.min(10, Math.max(1, diversificationScore));  let riskBalanceScore = 4; if (bondWeight >= 20 && bondWeight <= 50) riskBalanceScore = 9; else if (bondWeight >= 10) riskBalanceScore = 7; else if (bondWeight > 0) riskBalanceScore = 6;  const assetClassesCount = [broadWeight > 5, bondWeight > 5, goldWeight > 2].filter(Boolean).length; const multiAssetScore = assetClassesCount >= 3 ? 9 : assetClassesCount === 2 ? 7 : 4;  return { total, processedPositions, metrics: { broadWeight: Math.round(broadWeight), bondWeight: Math.round(bondWeight), goldWeight: Math.round(goldWeight), specWeight: Math.round(specWeight), etfTotalWeight, missingEtfTer: etfTotalWeight > 0 && etfKnownTerWeight < etfTotalWeight, effectiveTer, scores: { costs: costsScore, broad: broadScore, simplicity: simplicityScore, lowSpec: lowSpecScore, diversification: diversificationScore, riskBalance: riskBalanceScore, multiAsset: multiAssetScore, }, } }; }  function evaluatePortfolioForAnalyst(analyst, metrics) { let weightedSum = 0; const breakdown = analyst.weights.map((item) => { const s = metrics.scores[item.key] ?? 5; weightedSum += s * (item.weight / 100); return { ...item, score: s }; });  const finalScore = Math.min(10, Math.max(1, Math.round(weightedSum))); const sorted = [...breakdown].sort((a, b) => b.score - a.score); const bestCriterion = sorted[0]; const worstCriterion = sorted[sorted.length - 1];  const strengths = []; const weaknesses = []; const improvements = [];  if (metrics.broadWeight >= 50) { strengths.push(`${metrics.broadWeight}% da carteira está em fundos de índice amplo.`);
-  } else if (metrics.broadWeight > 0) {
-    strengths.push(`${metrics.broadWeight}% da carteira está alocada a índices amplos.`);
-  }
-
-  if (metrics.bondWeight >= 10) {
-    strengths.push(`${metrics.bondWeight}% em obrigações ou liquidez ajuda a amortecer quedas.`);
-  }
-
-  if (portfolio.length <= 6) {
-    strengths.push(`${portfolio.length}${portfolio.length === 1 ? "posição, muito fácil" : "posições, fácil"} de acompanhar.`);
-  }
-
-  if (metrics.specWeight <= 10 && metrics.broadWeight >= 50) {
-    strengths.push(`Exposição especulativa reduzida (${metrics.specWeight}%).`);
-  }
-
-  if (!strengths.length) {
-    strengths.push(`Carteira simples com ${portfolio.length} posições em acompanhamento.`);
-  }
-
-  if (metrics.specWeight > 10) {
-    weaknesses.push(`${metrics.specWeight}% em ações individuais, temas e cripto é muita aposta concentrada.`);
-    improvements.push("Limita ações individuais, temas e cripto a cerca de 10% ou menos.");
-  }
-
-  if (metrics.missingEtfTer) {
-    weaknesses.push("Faltam alguns valores de TER nos ETFs da carteira (foi assumido um valor estimado para o cálculo de custos).");
-    improvements.push("Preenche os TER em falta na tabela acima para maior precisão (podes consultar no justETF).");
-  } else if (metrics.effectiveTer > 0.25) {
-    weaknesses.push(`O TER médio estimado (${metrics.effectiveTer.toFixed(2)}%) está acima do ideal para indexação passiva.`);
-    improvements.push("Procura alternativas de índice amplo com TER inferior a 0,25%.");
-  }
-
-  if (metrics.broadWeight < 60) {
-    weaknesses.push(`Apenas ${metrics.broadWeight}% da carteira está em ETFs de índice amplo.`);
-    improvements.push("Reforça o núcleo da carteira com ETFs globais de índice amplo (ex.: MSCI World ou FTSE All-World).");
-  }
-
-  if (!weaknesses.length) {
-    weaknesses.push("Sem desequilíbrios graves identificados na estrutura atual.");
-  }
-  if (!improvements.length) {
-    improvements.push("Mantém o reequilíbrio periódico anual para preservar os pesos alvo.");
-  }
-
-  return {
-    score: finalScore,
-    breakdown,
-    bestCriterion,
-    worstCriterion,
-    strengths,
-    weaknesses,
-    improvements,
-  };
-}
-
-function renderPortfolio() {
-  const tbody = document.getElementById("portfolioTableBody");
-  const empty = document.getElementById("portfolioEmptyState");
-  const wrap = document.getElementById("portfolioTableWrapper");
-  const warning = document.getElementById("portfolioTerWarning");
-  const analystsSection = document.getElementById("portfolioAnalystsSection");
-
-  if (!tbody) return;
-
-  if (!portfolio.length) {
-    empty.classList.remove("hidden");
-    wrap.classList.add("hidden");
-    warning.classList.add("hidden");
-    analystsSection.classList.add("hidden");
-    tbody.innerHTML = "";
-    document.getElementById("portfolioTotalValue").textContent = "0,00 €";
-    return;
-  }
-
-  empty.classList.add("hidden");
-  wrap.classList.remove("hidden");
-  analystsSection.classList.remove("hidden");
-
-  const { total, processedPositions, metrics } = computePortfolioMetrics();
-
-  document.getElementById("portfolioTotalValue").textContent = `${money(total)} €`;
-  warning.classList.toggle("hidden", !(metrics && metrics.missingEtfTer));
-
-  // Solicita cotação para ativos do portefólio que ainda não tenham dados carregados
-  const missingTickers = portfolio.filter(p => !quotes[p.ticker]).map(p => p.ticker);
-  if (missingTickers.length > 0) {
-    refresh(missingTickers);
-  }
-
-  tbody.innerHTML = processedPositions
-    .map((pos, idx) => {
-      const weightPct = total > 0 ? (pos.value / total) * 100 : 0;
-      const typeMeta = ASSET_TYPES.find((t) => t.id === pos.type) || ASSET_TYPES[0];
-      
-      const terCell = typeMeta.isEtf
-        ? `<div class="inline-flex flex-col items-start">
-            <input
-              type="text"
-              value="${pos.ter != null ? esc(String(pos.ter).replace(".", ",")) : ""}"
-              placeholder="n/d"
-              onchange="updatePositionTer(${idx}, this.value)"
-              class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-blue-500"
-            >
-            <span class="text-[10px] text-slate-500 mt-0.5">%</span>
-          </div>`
-        : `<span class="text-slate-500">—</span>`;
-
-      return `<tr class="hover:bg-slate-800/40">
-        <td class="p-3">
-          <div class="font-bold text-white leading-snug">${esc(pos.name)}</div>
-          <div class="text-xs text-slate-400 mt-0.5">${esc(pos.ticker)} · Preço: <span class="text-emerald-400">€${money(pos.price)}</span></div>
-        </td>
-        <td class="p-3">
-          <select
-            onchange="updatePositionType(${idx}, this.value)"
-            class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
-          >
-            ${ASSET_TYPES.map(
-              (t) => `<option value="${t.id}" ${pos.type === t.id ? "selected" : ""}>${esc(t.label)}</option>`
-            ).join("")}
-          </select>
-        </td>
-        <td class="p-3">
-          <input
-            type="number"
-            step="any"
-            min="0"
-            value="${pos.shares}"
-            onchange="updatePositionShares(${idx}, this.value)"
-            class="w-28 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
-          >
-          <div class="text-[10px] text-slate-400 mt-1">= €${money(pos.value)}</div>
-        </td>
-        <td class="p-3 font-bold text-white">
-          ${weightPct.toLocaleString("pt-PT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
-        </td>
-        <td class="p-3">${terCell}</td>
-        <td class="p-3 text-right">
-          <button
-            type="button"
-            onclick="removePortfolioPosition(${idx})"
-            title="Remover posição"
-            class="text-slate-500 hover:text-red-400 px-2 py-1 text-sm transition"
-          >✕</button>
-        </td>
-      </tr>`;
-    })
-    .join("");
-
-  if (!metrics) return;
-
-  const cardsContainer = document.getElementById("portfolioAnalystCards");
-  const evaluations = {};
-
-  cardsContainer.innerHTML = PORTFOLIO_ANALYSTS.map((analyst) => {
-    const ev = evaluatePortfolioForAnalyst(analyst, metrics);
-    evaluations[analyst.id] = ev;
-    const isSelected = analyst.id === selectedPortfolioAnalyst;
-    return `<button
-      type="button"
-      onclick="selectPortfolioAnalyst('${analyst.id}')"
-      class="p-4 rounded-xl border text-center transition flex flex-col items-center justify-center min-h-[110px]
