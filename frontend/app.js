@@ -323,23 +323,25 @@ function selectFooter(p) {
 }
 
 /* ============================================================================
-   SEPARADOR PORTEFÓLIO DE AÇÕES INDIVIDUAIS (BUFFETT, LYNCH, FISHER)
+   SEPARADOR PORTEFÓLIO — OS 6 ANALISTAS (BUFFETT, LYNCH, FISHER, BOGLE, SWENSEN, BERNSTEIN)
    ============================================================================ */
 
 const ASSET_TYPES = [
   { id: "stock", label: "Ação individual", isStock: true },
+  { id: "etf_broad", label: "ETF de ações", isStock: false, isEtf: true },
+  { id: "etf_bond", label: "ETF de obrigações", isStock: false, isEtf: true },
+  { id: "etf_thematic", label: "ETF temático / setorial", isStock: false, isEtf: true },
   { id: "crypto", label: "Cripto / especulativo", isStock: false },
   { id: "cash", label: "Liquidez / cash", isStock: false },
-  { id: "etf_broad", label: "ETF / Outro", isStock: false },
 ];
 
 const PORTFOLIO_ANALYSTS = [
   {
     id: "buffett",
     name: "Warren Buffett",
-    tagline: "Foco em qualidade, vantagens competitivas (moats) e diversificação moderada.",
+    tagline: "Qualidade, vantagens competitivas (moats) e múltiplos P/E comportáveis.",
     weights: [
-      { key: "qualityConcentration", label: "Foco nas melhores empresas", weight: 35 },
+      { key: "qualityConcentration", label: "Foco e peso das empresas", weight: 35 },
       { key: "valuationPe", label: "Rácio P/E comportável", weight: 25 },
       { key: "sectorSpread", label: "Diversificação setorial", weight: 25 },
       { key: "lowSpec", label: "Ausência de especulação", weight: 15 },
@@ -348,9 +350,9 @@ const PORTFOLIO_ANALYSTS = [
   {
     id: "lynch",
     name: "Peter Lynch",
-    tagline: "GARP (crescimento a bom preço), portefólio equilibrado (6 a 15 ações).",
+    tagline: "GARP, portefólio equilibrado (6 a 15 posições) e crescimento.",
     weights: [
-      { key: "sweetSpotCount", label: "Número ideal de ações (6-15)", weight: 35 },
+      { key: "sweetSpotCount", label: "Número ideal de posições (6-15)", weight: 35 },
       { key: "noDominantConcentration", label: "Equilíbrio de pesos", weight: 30 },
       { key: "growthPotential", label: "Potencial de mercado", weight: 20 },
       { key: "lowSpec", label: "Controlo de risco", weight: 15 },
@@ -359,29 +361,67 @@ const PORTFOLIO_ANALYSTS = [
   {
     id: "fisher",
     name: "Philip Fisher",
-    tagline: "Empresas excecionais de crescimento, foco a longo prazo e concentração seletiva.",
+    tagline: "Empresas excecionais de crescimento e concentração em líderes.",
     weights: [
       { key: "focusQuality", label: "Concentração em líderes", weight: 40 },
       { key: "sectorSpread", label: "Diversificação por indústrias", weight: 30 },
       { key: "lowSpec", label: "Zero apostas puramente especulativas", weight: 30 },
     ],
   },
+  {
+    id: "bogle",
+    name: "John Bogle",
+    tagline: "Custos baixos, fundos de índice amplos e simplicidade.",
+    weights: [
+      { key: "costs", label: "Custos e comissões (TER)", weight: 35 },
+      { key: "broad", label: "Exposição a índices amplos", weight: 30 },
+      { key: "simplicity", label: "Simplicidade da carteira", weight: 20 },
+      { key: "lowSpec", label: "Baixa especulação", weight: 15 },
+    ],
+  },
+  {
+    id: "swensen",
+    name: "David Swensen",
+    tagline: "Alocação diversificada entre classes de ativos e reequilíbrio.",
+    weights: [
+      { key: "multiAsset", label: "Diversificação multicalasse", weight: 35 },
+      { key: "broad", label: "Núcleo em ativos globais", weight: 25 },
+      { key: "costs", label: "Custos controlados", weight: 20 },
+      { key: "lowSpec", label: "Disciplina institucional", weight: 20 },
+    ],
+  },
+  {
+    id: "bernstein",
+    name: "William Bernstein",
+    tagline: "Controlo de risco, obrigações estabilizadoras e custos baixos.",
+    weights: [
+      { key: "riskBalance", label: "Proteção e obrigações", weight: 35 },
+      { key: "diversification", label: "Diversificação global", weight: 30 },
+      { key: "costs", label: "Custos baixos", weight: 20 },
+      { key: "simplicity", label: "Simplicidade", weight: 15 },
+    ],
+  },
 ];
 
-let portfolio = JSON.parse(localStorage.getItem("aa_portfolio_stocks_v1") || "[]");
-let selectedPortfolioAnalyst = localStorage.getItem("aa_portfolio_analyst_stocks_v1") || "buffett";
+let portfolio = JSON.parse(localStorage.getItem("aa_portfolio_all_v1") || "[]");
+let selectedPortfolioAnalyst = localStorage.getItem("aa_portfolio_analyst_all_v1") || "buffett";
 let pendingPortfolioAsset = null;
 let portfolioSearchTimeout = null;
 
 function savePortfolio() {
-  localStorage.setItem("aa_portfolio_stocks_v1", JSON.stringify(portfolio));
+  localStorage.setItem("aa_portfolio_all_v1", JSON.stringify(portfolio));
 }
 
 function classifyAsset(item) {
   const qType = (item.type || item.quoteType || "").toUpperCase();
   const text = `${item.symbol || ""} ${item.name || ""}`.toUpperCase();
   if (qType === "CRYPTOCURRENCY" || /(BTC|ETH|SOL|CRYPTO|BITCOIN|ETHEREUM)/.test(text)) return "crypto";
-  if (qType === "ETF" || /(ETF|UCITS|ISHARES|VANGUARD)/.test(text)) return "etf_broad";
+  if (qType === "ETF" || qType === "MUTUALFUND" || /(ETF|UCITS|ISHARES|VANGUARD|AMUNDI|XTRACKERS|SPDR|INVESCO)/.test(text)) {
+    if (/(BOND|AGGREGATE|TREASURY|GILT|OBRIG|GOVT|CORP BOND)/.test(text)) return "etf_bond";
+    if (/(GOLD|SILVER|COMMODIT)/.test(text)) return "etf_gold";
+    if (/(AI|ROBOT|CLEAN ENERGY|SEMICONDUCTOR|TECH)/.test(text)) return "etf_thematic";
+    return "etf_broad";
+  }
   return "stock";
 }
 
@@ -443,12 +483,12 @@ async function addPortfolioPosition() {
   const sharesVal = parseFloat(String(sharesInput.value).replace(",", "."));
 
   if (!rawQuery) {
-    feedback.textContent = "Procura primeiro uma ação (nome, ticker ou ISIN).";
+    feedback.textContent = "Procura primeiro um ativo (nome, ticker ou ISIN).";
     feedback.className = "text-sm text-amber-400";
     return;
   }
   if (!Number.isFinite(sharesVal) || sharesVal <= 0) {
-    feedback.textContent = "Indica um número de ações válido (ex.: 10 ou 1.5).";
+    feedback.textContent = "Indica um número de ações/unidades válido (ex.: 10 ou 1.5).";
     feedback.className = "text-sm text-amber-400";
     sharesInput.focus();
     return;
@@ -486,6 +526,7 @@ async function addPortfolioPosition() {
     name: finalName,
     type: (quoteData && quoteData.quoteType) || candidate.type,
   });
+  const detectedTer = quoteData && typeof quoteData.ter === "number" ? quoteData.ter : null;
 
   const existingIndex = portfolio.findIndex((p) => p.ticker.toUpperCase() === candidate.symbol.toUpperCase());
   if (existingIndex >= 0) {
@@ -497,6 +538,7 @@ async function addPortfolioPosition() {
       name: finalName,
       type: detectedType,
       shares: sharesVal,
+      ter: detectedTer,
     });
   }
 
@@ -519,6 +561,10 @@ async function addPortfolioPosition() {
 function updatePositionType(index, newType) {
   if (!portfolio[index]) return;
   portfolio[index].type = newType;
+  const typeMeta = ASSET_TYPES.find((t) => t.id === newType);
+  if (!typeMeta || !typeMeta.isEtf) {
+    portfolio[index].ter = null;
+  }
   savePortfolio();
   renderPortfolio();
 }
@@ -527,6 +573,19 @@ function updatePositionShares(index, rawVal) {
   if (!portfolio[index]) return;
   const parsed = parseFloat(String(rawVal).replace(",", "."));
   portfolio[index].shares = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  savePortfolio();
+  renderPortfolio();
+}
+
+function updatePositionTer(index, rawTer) {
+  if (!portfolio[index]) return;
+  const cleaned = String(rawTer).trim().replace(",", ".");
+  if (!cleaned || cleaned.toLowerCase() === "n/d") {
+    portfolio[index].ter = null;
+  } else {
+    const parsed = parseFloat(cleaned);
+    portfolio[index].ter = Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  }
   savePortfolio();
   renderPortfolio();
 }
@@ -547,7 +606,7 @@ function clearPortfolio() {
 
 function selectPortfolioAnalyst(analystId) {
   selectedPortfolioAnalyst = analystId;
-  localStorage.setItem("aa_portfolio_analyst_stocks_v1", analystId);
+  localStorage.setItem("aa_portfolio_analyst_all_v1", analystId);
   renderPortfolio();
 }
 
@@ -570,7 +629,7 @@ function scoreLabelPt(score) {
   return "fraca";
 }
 
-function computeStockPortfolioMetrics() {
+function computeUnifiedPortfolioMetrics() {
   let total = 0;
   const processedPositions = portfolio.map(p => {
     const q = quotes[p.ticker];
@@ -586,18 +645,34 @@ function computeStockPortfolioMetrics() {
 
   const count = portfolio.length;
   const maxWeight = Math.max(...processedPositions.map(p => (p.value / total) * 100));
-  
   const sectorsSet = new Set(processedPositions.map(p => p.sector));
   const distinctSectors = sectorsSet.size;
 
+  let broadWeight = 0;
+  let bondWeight = 0;
+  let goldWeight = 0;
   let specValue = 0;
   let validPeCount = 0;
   let sumPe = 0;
+  let etfTotalWeight = 0;
+  let etfKnownTerWeight = 0;
+  let weightedTerSum = 0;
 
   for (const p of processedPositions) {
-    if (p.type === "crypto") {
-      specValue += p.value;
+    const w = (p.value / total) * 100;
+    if (p.type === "etf_broad") broadWeight += w;
+    else if (p.type === "etf_bond" || p.type === "cash") bondWeight += w;
+    else if (p.type === "etf_gold") goldWeight += w;
+    else if (p.type === "crypto") specValue += p.value;
+
+    if (p.type && p.type.startsWith("etf_")) {
+      etfTotalWeight += w;
+      if (p.ter != null && Number.isFinite(p.ter)) {
+        etfKnownTerWeight += w;
+        weightedTerSum += w * p.ter;
+      }
     }
+
     if (p.pe != null && p.pe > 0) {
       validPeCount++;
       sumPe += p.pe;
@@ -605,33 +680,34 @@ function computeStockPortfolioMetrics() {
   }
 
   const specWeight = (specValue / total) * 100;
-  const avgPe = validPeCount > 0 ? sumPe / validPeCount : 15;
+  const avgPe = validPeCount > 0 ? sumPe / validPeCount : 18;
 
-  let qualityConcentrationScore = 10;
-  if (maxWeight > 50) qualityConcentrationScore = 4;
-  else if (maxWeight > 30) qualityConcentrationScore = 7;
-  if (count > 20) qualityConcentrationScore -= 2;
-  qualityConcentrationScore = Math.max(1, Math.min(10, qualityConcentrationScore));
+  const unknownEtfWeight = Math.max(0, etfTotalWeight - etfKnownTerWeight);
+  const effectiveTer = etfTotalWeight > 0 ? (weightedTerSum + unknownEtfWeight * 0.30) / etfTotalWeight : 0.15;
+  const majorityMissingTer = etfTotalWeight > 0 && etfKnownTerWeight < etfTotalWeight * 0.5;
 
-  let valuationPeScore = 10;
-  if (avgPe > 35) valuationPeScore = 3;
-  else if (avgPe > 25) valuationPeScore = 6;
-  else if (avgPe > 18) valuationPeScore = 8;
-  else valuationPeScore = 10;
+  let costsScore = 10;
+  if (effectiveTer <= 0.15) costsScore = 10;
+  else if (effectiveTer <= 0.25) costsScore = 8;
+  else if (effectiveTer <= 0.40) costsScore = 6;
+  else costsScore = 4;
+  if (majorityMissingTer && costsScore > 6) costsScore = 6;
 
-  let sectorSpreadScore = distinctSectors >= 4 ? 10 : distinctSectors === 3 ? 8 : distinctSectors === 2 ? 6 : 4;
+  let qualityConcentrationScore = maxWeight > 50 ? 4 : maxWeight > 30 ? 7 : 10;
+  let valuationPeScore = avgPe > 30 ? 4 : avgPe > 20 ? 7 : 10;
+  let sectorSpreadScore = distinctSectors >= 3 ? 10 : distinctSectors === 2 ? 7 : 4;
   let lowSpecScore = specWeight <= 2 ? 10 : specWeight <= 10 ? 7 : 3;
 
-  let sweetSpotCountScore = 10;
-  if (count >= 6 && count <= 15) sweetSpotCountScore = 10;
-  else if (count >= 4 && count <= 20) sweetSpotCountScore = 8;
-  else if (count >= 2 && count <= 25) sweetSpotCountScore = 6;
-  else sweetSpotCountScore = 4;
-
+  let sweetSpotCountScore = (count >= 6 && count <= 15) ? 10 : count <= 20 ? 7 : 4;
   let noDominantConcentrationScore = maxWeight <= 25 ? 10 : maxWeight <= 40 ? 7 : 4;
   let growthPotentialScore = 8;
+  let focusQualityScore = (count >= 5 && count <= 15) ? 10 : 7;
 
-  let focusQualityScore = (count >= 5 && count <= 15 && maxWeight <= 35) ? 10 : 7;
+  let broadScore = Math.min(10, Math.max(0, Math.round(((broadWeight || (count >= 5 ? 60 : 30)) / 85) * 10)));
+  let simplicityScore = count <= 6 ? 10 : count <= 12 ? 7 : 4;
+  let diversificationScore = Math.min(10, Math.max(2, Math.round(distinctSectors * 2.5)));
+  let riskBalanceScore = (bondWeight >= 15) ? 9 : 6;
+  let multiAssetScore = (distinctSectors >= 3 || bondWeight > 0) ? 9 : 6;
 
   return {
     total,
@@ -642,6 +718,10 @@ function computeStockPortfolioMetrics() {
       distinctSectors,
       avgPe,
       specWeight,
+      broadWeight,
+      bondWeight,
+      effectiveTer,
+      missingEtfTer: majorityMissingTer,
       scores: {
         qualityConcentration: qualityConcentrationScore,
         valuationPe: valuationPeScore,
@@ -651,12 +731,18 @@ function computeStockPortfolioMetrics() {
         noDominantConcentration: noDominantConcentrationScore,
         growthPotential: growthPotentialScore,
         focusQuality: focusQualityScore,
+        costs: costsScore,
+        broad: broadScore,
+        simplicity: simplicityScore,
+        diversification: diversificationScore,
+        riskBalance: riskBalanceScore,
+        multiAsset: multiAssetScore,
       }
     }
   };
 }
 
-function evaluateStockPortfolioForAnalyst(analyst, metrics) {
+function evaluateAnalystUnified(analyst, metrics) {
   let weightedSum = 0;
   const breakdown = analyst.weights.map((item) => {
     const s = metrics.scores[item.key] ?? 7;
@@ -674,39 +760,27 @@ function evaluateStockPortfolioForAnalyst(analyst, metrics) {
   const improvements = [];
 
   if (metrics.count >= 5 && metrics.count <= 15) {
-    strengths.push(`Tens ${metrics.count} ações em carteira, o que encaixa perfeitamente na diversificação recomendada.`);
+    strengths.push(`Número equilibrado de ativos (${metrics.count}), ideal para acompanhamento.`);
   } else if (metrics.count > 15) {
-    strengths.push(`Carteira com ${metrics.count} posições (diversificação ampla estilo mutual fund).`);
-    weaknesses.push("Demasiadas posições podem diluir o impacto das tuas melhores ideias.");
-    improvements.push("Considera concentrar o capital nas tuas 10 a 15 convicções mais fortes.");
+    strengths.push(`Diversificação alargada com ${metrics.count} posições.`);
+    weaknesses.push("Demasiadas posições podem diluir o potencial de retorno das melhores convicções.");
+    improvements.push("Foca o capital nas tuas principais apostas.");
   } else {
-    strengths.push(`Carteira ultra-focada com ${metrics.count} ${metrics.count === 1 ? "posição" : "posições"}.`);
-    weaknesses.push("Uma carteira com poucas ações aumenta drasticamente o risco se uma empresa falhar.");
-    improvements.push("Adiciona mais 3 a 5 empresas líderes de setores diferentes para proteger o capital.");
-  }
-
-  if (metrics.distinctSectors >= 3) {
-    strengths.push(`Boa cobertura setorial (${metrics.distinctSectors} setores representados).`);
-  } else {
-    weaknesses.push("Falta de dispersão setorial; estás muito exposto a uma única indústria económica.");
-    improvements.push("Procura ações de setores defensivos ou industriais para balancear o risco.");
+    strengths.push(`Portefólio focado com ${metrics.count} posições.`);
+    weaknesses.push("Baixo número de ativos eleva o risco individual.");
+    improvements.push("Considera adicionar mais 2 a 3 ativos para mitigar volatilidade.");
   }
 
   if (metrics.specWeight > 10) {
-    weaknesses.push(`Possuis ${metrics.specWeight.toFixed(1)}% em ativos altamente especulativos.`);
-    improvements.push("Reduz a componente especulativa e foca o capital em negócios geradores de caixa previsível.");
-  }
-
-  if (metrics.avgPe > 30) {
-    weaknesses.push(`O P/E médio ponderado da carteira (${metrics.avgPe.toFixed(1)}) está bastante elevado, exigindo crescimento perfeito.`);
-    improvements.push("Equilibra o portefólio com empresas de valor ou menor múltiplo de avaliação.");
+    weaknesses.push(`Exposição especulativa elevada (${metrics.specWeight.toFixed(1)}%).`);
+    improvements.push("Reduz o peso de ativos altamente especulativos.");
   } else {
-    strengths.push(`Múltiplo P/E médio saudável (${metrics.avgPe.toFixed(1)}x) para um portefólio de ações.`);
+    strengths.push("Exposição a ativos especulativos controlada.");
   }
 
-  if (!strengths.length) strengths.push("Boa seleção de empresas individuais com acompanhamento ativo.");
-  if (!weaknesses.length) weaknesses.push("Nenhum desequilíbrio estrutural crítico detectado nos pesos.");
-  if (!improvements.length) improvements.push("Monitoriza trimestralmente os resultados operacionais das empresas.");
+  if (!strengths.length) strengths.push("Boa estrutura geral de ativos.");
+  if (!weaknesses.length) weaknesses.push("Nenhum desequilíbrio grave detetado.");
+  if (!improvements.length) improvements.push("Manter consistência no plano de aportes.");
 
   return {
     score: finalScore,
@@ -741,11 +815,11 @@ function renderPortfolio() {
   empty.classList.add("hidden");
   wrap.classList.remove("hidden");
   analystsSection.classList.remove("hidden");
-  if (warning) warning.classList.add("hidden");
 
-  const { total, processedPositions, metrics } = computeStockPortfolioMetrics();
+  const { total, processedPositions, metrics } = computeUnifiedPortfolioMetrics();
 
   document.getElementById("portfolioTotalValue").textContent = `${money(total)} €`;
+  if (warning) warning.classList.toggle("hidden", !(metrics && metrics.missingEtfTer));
 
   const missingTickers = portfolio.filter(p => !quotes[p.ticker]).map(p => p.ticker);
   if (missingTickers.length > 0) {
@@ -755,11 +829,25 @@ function renderPortfolio() {
   tbody.innerHTML = processedPositions
     .map((pos, idx) => {
       const weightPct = total > 0 ? (pos.value / total) * 100 : 0;
+      const typeMeta = ASSET_TYPES.find((t) => t.id === pos.type) || ASSET_TYPES[0];
       
+      const terCell = typeMeta.isEtf
+        ? `<div class="inline-flex flex-col items-start">
+            <input
+              type="text"
+              value="${pos.ter != null ? esc(String(pos.ter).replace(".", ",")) : ""}"
+              placeholder="n/d"
+              onchange="updatePositionTer(${idx}, this.value)"
+              class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-blue-500"
+            >
+            <span class="text-[10px] text-slate-500 mt-0.5">%</span>
+          </div>`
+        : `<span class="text-slate-500">—</span>`;
+
       return `<tr class="hover:bg-slate-800/40">
         <td class="p-3">
           <div class="font-bold text-white leading-snug">${esc(pos.name)}</div>
-          <div class="text-xs text-slate-400 mt-0.5">${esc(pos.ticker)} · Preço: <span class="text-emerald-400">€${money(pos.price)}</span> · Setor: <span class="text-blue-300">${esc(pos.sector)}</span></div>
+          <div class="text-xs text-slate-400 mt-0.5">${esc(pos.ticker)} · Preço: <span class="text-emerald-400">€${money(pos.price)}</span></div>
         </td>
         <td class="p-3">
           <select
@@ -785,6 +873,7 @@ function renderPortfolio() {
         <td class="p-3 font-bold text-white">
           ${weightPct.toLocaleString("pt-PT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
         </td>
+        <td class="p-3">${terCell}</td>
         <td class="p-3 text-right">
           <button
             type="button"
@@ -803,7 +892,7 @@ function renderPortfolio() {
   const evaluations = {};
 
   cardsContainer.innerHTML = PORTFOLIO_ANALYSTS.map((analyst) => {
-    const ev = evaluateStockPortfolioForAnalyst(analyst, metrics);
+    const ev = evaluateAnalystUnified(analyst, metrics);
     evaluations[analyst.id] = ev;
     const isSelected = analyst.id === selectedPortfolioAnalyst;
     return `<button
@@ -892,7 +981,7 @@ function renderPortfolio() {
     </div>
 
     <p class="text-[11px] text-slate-500 pt-2 border-t border-slate-800">
-      Avaliação inspirada nos princípios de investimento em ações individuais de ${esc(activeAnalyst.name)}. Não constitui recomendação financeira.
+      Avaliação inspirada nos princípios de ${esc(activeAnalyst.name)}. Não constitui recomendação financeira.
     </p>
   `;
 }
